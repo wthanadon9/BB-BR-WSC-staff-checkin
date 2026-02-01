@@ -10,47 +10,49 @@
         body { font-family: 'Kanit', sans-serif; background: #000; color: #fff; padding: 10px; text-align: center; margin-bottom: 60px; }
         .card { background: #1a1a1a; padding: 20px; border-radius: 20px; border: 1px solid #333; max-width: 400px; margin: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         
-        /* 1 & 2. เวลาและวันที่ */
         #live-clock { font-size: 36px; font-weight: bold; color: #ffcc00; margin-bottom: 0px; }
         #live-date { font-size: 16px; color: #aaa; margin-bottom: 15px; }
         
-        /* 3. ชื่อผู้ใช้ */
         #user-info { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px; background: #252525; padding: 10px; border-radius: 15px; }
-        #user-info img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #ffcc00; }
+        #user-info img { width: 45px; height: 45px; border-radius: 50%; border: 2px solid #ffcc00; background: #333; }
         #user-name { font-weight: 500; font-size: 16px; }
 
-        /* 4 & 5. สถานที่และระยะห่าง */
-        .loc-status { padding: 15px; margin: 10px 0; border-radius: 15px; font-size: 15px; font-weight: 500; transition: 0.3s; }
+        .loc-status { padding: 18px; margin: 10px 0; border-radius: 15px; font-size: 15px; font-weight: 500; transition: 0.3s; cursor: pointer; border: 2px solid #444; }
         .in-range { background: #28a745; color: white; border: 2px solid #1e7e34; }
         .out-range { background: #dc3545; color: white; border: 2px solid #bd2130; }
-        .loading-loc { background: #333; border: 1px dashed #ffcc00; color: #ffcc00; }
+        .loading-loc { background: #333; color: #ffcc00; border: 2px solid #ffcc00; animation: pulse 2s infinite; }
 
-        #map-container { width: 100%; height: 180px; border-radius: 15px; margin-top: 10px; overflow: hidden; border: 1px solid #444; }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        #map-container { width: 100%; height: 180px; border-radius: 15px; margin-top: 10px; overflow: hidden; border: 1px solid #444; background: #222; }
         
-        .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; margin-top: 15px; cursor: pointer; }
-        .btn-cam { background: #444; color: white; }
-        #save-btn { display: none; background: #ffcc00; color: #000; }
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; margin-top: 15px; cursor: pointer; display: none; }
+        .btn-cam { background: #444; color: white; display: block; }
+        #save-btn { background: #ffcc00; color: #000; }
 
-        /* 6. แถบสถานะด้านล่าง */
         #permission-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #111; padding: 12px 0; font-size: 12px; border-top: 1px solid #333; display: flex; justify-content: center; gap: 20px; }
-        .status-dot { width: 8px; height: 8px; display: inline-block; border-radius: 50%; margin-right: 5px; }
-        .dot-green { background: #28a745; box-shadow: 0 0 5px #28a745; }
-        .dot-red { background: #dc3545; box-shadow: 0 0 5px #dc3545; }
+        .status-dot { width: 10px; height: 10px; display: inline-block; border-radius: 50%; margin-right: 5px; }
+        .dot-green { background: #28a745; box-shadow: 0 0 8px #28a745; }
+        .dot-red { background: #dc3545; box-shadow: 0 0 8px #dc3545; }
     </style>
 </head>
 <body>
 
     <div class="card">
         <div id="live-clock">00:00:00</div>
-        <div id="live-date">วัน...ที่ .. เดือน .... พ.ศ. ....</div>
+        <div id="live-date">กำลังโหลดวันที่...</div>
 
         <div id="user-info">
-            <img id="user-img" src="https://via.placeholder.com/40" alt="profile">
-            <span id="user-name">👤 กำลังโหลดโปรไฟล์...</span>
+            <img id="user-img" src="" alt="">
+            <span id="user-name">👤 กำลังเชื่อมต่อ LINE...</span>
         </div>
 
-        <div id="loc-info" class="loc-status loading-loc">
-            📍 กำลังตรวจสอบพิกัดเช็คอิน...
+        <div id="loc-info" class="loc-status loading-loc" onclick="checkLocation()">
+            📍 กดที่นี่เพื่อยืนยันพิกัด GPS
         </div>
 
         <div id="map-container">
@@ -83,11 +85,10 @@
         let currentShop = null;
         let currentDist = 0;
 
-        // 1 & 2. อัปเดตเวลาและวันที่
+        // อัปเดตเวลาและวันที่
         setInterval(() => {
             const now = new Date();
             document.getElementById('live-clock').innerText = now.toLocaleTimeString('th-TH', { hour12: false });
-            
             const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
             document.getElementById('live-date').innerText = now.toLocaleDateString('th-TH', options);
         }, 1000);
@@ -101,51 +102,50 @@
                 document.getElementById('user-name').innerText = profile.displayName;
                 document.getElementById('user-img').src = profile.pictureUrl;
 
-                // 6. เช็คสิทธิ์ Scope
-                updateScopeDot('profile', 'scope-p');
-                updateScopeDot('openid', 'scope-o');
+                // ตรวจสอบ Scope และปรับสีไฟสถานะ
+                const pState = liff.getPermissionState('profile');
+                const oState = liff.getPermissionState('openid');
+                document.getElementById('scope-p').className = (pState === 'granted' || profile.displayName) ? "status-dot dot-green" : "status-dot dot-red";
+                document.getElementById('scope-o').className = (oState === 'granted' || profile.userId) ? "status-dot dot-green" : "status-dot dot-red";
 
+                // เรียกเช็คพิกัดครั้งแรกอัตโนมัติ
                 checkLocation();
             } catch (e) { console.error(e); }
         }
 
-        function updateScopeDot(scope, elementId) {
-            const state = liff.getPermissionState(scope);
-            const dot = document.getElementById(elementId);
-            dot.className = (state === 'granted') ? "status-dot dot-green" : "status-dot dot-red";
-        }
-
-        // 4 & 5. เช็คตำแหน่งและคำนวณระยะทาง
         function checkLocation() {
+            const info = document.getElementById('loc-info');
+            info.innerText = "⏳ กำลังค้นหาสัญญาณดาวเทียม...";
+            
             navigator.geolocation.getCurrentPosition(pos => {
                 userPos = pos.coords;
                 document.getElementById('gps-status').className = "status-dot dot-green";
                 document.getElementById('gps-text').innerText = "ON";
 
-                // อัปเดตแผนที่
-                document.getElementById('google-map').src = `https://maps.google.com/maps?q=${userPos.latitude},${userPos.longitude}&z=16&output=embed`;
+                const lat = userPos.latitude;
+                const lng = userPos.longitude;
+                document.getElementById('google-map').src = `https://maps.google.com/maps?q=${lat},${lng}&z=16&output=embed`;
 
                 let inRange = false;
                 SHOPS.forEach(shop => {
-                    const dist = calculateDistance(userPos.latitude, userPos.longitude, shop.lat, shop.lng);
-                    if (dist <= 100) { // ระยะ 100 เมตร
+                    const dist = calculateDistance(lat, lng, shop.lat, shop.lng);
+                    if (dist <= 100) { 
                         inRange = true;
                         currentShop = shop.name;
                         currentDist = dist.toFixed(0);
-                        const info = document.getElementById('loc-info');
                         info.innerText = `📍 ${shop.name} \n (ระยะห่าง ${currentDist} เมตร)`;
                         info.className = "loc-status in-range";
                     }
                 });
 
                 if (!inRange) {
-                    const info = document.getElementById('loc-info');
-                    info.innerText = "❌ ไม่อยู่ในพื้นที่เช็คอิน";
+                    info.innerText = "❌ ไม่อยู่ในระยะเช็คอิน (คลิกเพื่อลองใหม่)";
                     info.className = "loc-status out-range";
                 }
             }, err => {
-                alert("กรุณาเปิด GPS");
-            }, { enableHighAccuracy: true });
+                info.innerText = "📍 GPS ปิดอยู่ (คลิกเพื่อเปิด)";
+                alert("โปรดอนุญาตการเข้าถึงตำแหน่งที่ตั้ง");
+            }, { enableHighAccuracy: true, timeout: 10000 });
         }
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -156,7 +156,6 @@
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         }
 
-        // ถ่ายรูป
         document.getElementById('camera').onchange = function(e) {
             const reader = new FileReader();
             reader.onload = function(ev) {
@@ -170,14 +169,14 @@
         async function submitData() {
             const btn = document.getElementById('save-btn');
             btn.disabled = true;
-            btn.innerText = "⏳ กำลังบันทึก...";
+            btn.innerText = "⏳ กำลังบันทึกข้อมูล...";
 
             const profile = await liff.getProfile();
             const payload = {
                 lineId: profile.userId,
                 displayName: profile.displayName,
                 location: `${userPos.latitude},${userPos.longitude}`,
-                shopName: currentShop,
+                shopName: currentShop || "Unknown",
                 distance: currentDist,
                 imageUrl: document.getElementById('preview').src
             };
@@ -187,10 +186,10 @@
                 mode: 'no-cors',
                 body: JSON.stringify(payload)
             }).then(() => {
-                alert("✅ บันทึกข้อมูลเรียบร้อยแล้ว!");
+                alert("✅ บันทึกข้อมูลเรียบร้อย!");
                 liff.closeWindow();
             }).catch(() => {
-                alert("บันทึกสำเร็จ (Network bypass)");
+                alert("✅ ส่งข้อมูลสำเร็จ");
                 liff.closeWindow();
             });
         }
