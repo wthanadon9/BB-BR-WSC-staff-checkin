@@ -135,19 +135,46 @@
         };
 
         async function submitData() {
-            const btn = document.getElementById('save-btn');
-            btn.disabled = true; btn.innerText = "⏳ กำลังบันทึก...";
-            const profile = await liff.getProfile(), idToken = liff.getDecodedIDToken();
-            const payload = {
-                lineId: profile.userId, displayName: profile.displayName, email: idToken.email || "N/A",
-                location: `${userPos.latitude},${userPos.longitude}`, shopName: currentShop || "Unknown",
-                distance: currentDist, imageUrl: document.getElementById('preview').src
-            };
-            fetch(WEB_APP_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) }).then(() => {
-                alert("✅ บันทึกเรียบร้อย!"); liff.closeWindow();
-            });
+    const btn = document.getElementById('save-btn');
+    btn.disabled = true; 
+    btn.innerText = "⏳ กำลังบันทึก...";
+
+    const profile = await liff.getProfile();
+    const idToken = liff.getDecodedIDToken();
+
+    const payload = {
+        lineId: profile.userId,
+        displayName: profile.displayName,
+        email: idToken.email || "N/A",
+        location: `${userPos.latitude},${userPos.longitude}`,
+        shopName: currentShop || "Unknown",
+        distance: currentDist,
+        imageUrl: document.getElementById('preview').src
+    };
+
+    fetch(WEB_APP_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: JSON.stringify(payload)
+    }).then(() => {
+        alert("✅ บันทึกข้อมูลเรียบร้อย!");
+        
+        // --- ส่วนที่ปรับปรุง: รีเฟรชหน้าจอเพื่อล้างข้อมูลเดิม ---
+        if (liff.isInClient()) {
+            // ถ้าเปิดในแอป LINE ให้ปิดหน้าต่าง หรือรีเฟรช
+            // liff.closeWindow(); // หากต้องการให้ปิดเลย
+            window.location.reload(); // หากต้องการให้รีเฟรชเพื่อรอเช็คครั้งถัดไป
+        } else {
+            window.location.reload(); 
         }
+    }).catch(err => {
+        alert("เกิดข้อผิดพลาดในการบันทึก");
+        btn.disabled = false;
+        btn.innerText = "ยืนยันการบันทึกข้อมูล";
+    });
+}
         window.onload = initLIFF;
     </script>
 </body>
 </html>
+
