@@ -9,35 +9,23 @@
     <style>
         body { font-family: 'Kanit', sans-serif; background: #000; color: #fff; padding: 10px; text-align: center; margin-bottom: 60px; }
         .card { background: #1a1a1a; padding: 20px; border-radius: 20px; border: 1px solid #333; max-width: 400px; margin: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        
         #live-clock { font-size: 36px; font-weight: bold; color: #ffcc00; margin-bottom: 0px; }
         #live-date { font-size: 16px; color: #aaa; margin-bottom: 15px; }
-        
         #user-info { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px; background: #252525; padding: 10px; border-radius: 15px; }
         #user-info img { width: 45px; height: 45px; border-radius: 50%; border: 2px solid #ffcc00; background: #333; }
-        #user-name { font-weight: 500; font-size: 16px; }
-
-        .loc-status { padding: 18px; margin: 10px 0; border-radius: 15px; font-size: 15px; font-weight: 500; transition: 0.3s; cursor: pointer; border: 2px solid #444; }
+        #user-name { font-weight: 500; font-size: 14px; }
+        .loc-status { padding: 18px; margin: 10px 0; border-radius: 15px; font-size: 15px; font-weight: 500; cursor: pointer; border: 2px solid #444; }
         .in-range { background: #28a745; color: white; border: 2px solid #1e7e34; }
         .out-range { background: #dc3545; color: white; border: 2px solid #bd2130; }
-        .loading-loc { background: #333; color: #ffcc00; border: 2px solid #ffcc00; animation: pulse 2s infinite; }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.6; }
-            100% { opacity: 1; }
-        }
-
+        .loading-loc { background: #333; color: #ffcc00; border: 2px solid #ffcc00; }
         #map-container { width: 100%; height: 180px; border-radius: 15px; margin-top: 10px; overflow: hidden; border: 1px solid #444; background: #222; }
-        
-        .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; margin-top: 15px; cursor: pointer; display: none; }
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; margin-top: 15px; cursor: pointer; }
         .btn-cam { background: #444; color: white; display: block; }
-        #save-btn { background: #ffcc00; color: #000; }
-
-        #permission-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #111; padding: 12px 0; font-size: 12px; border-top: 1px solid #333; display: flex; justify-content: center; gap: 20px; }
-        .status-dot { width: 10px; height: 10px; display: inline-block; border-radius: 50%; margin-right: 5px; }
-        .dot-green { background: #28a745; box-shadow: 0 0 8px #28a745; }
-        .dot-red { background: #dc3545; box-shadow: 0 0 8px #dc3545; }
+        #save-btn { background: #ffcc00; color: #000; display: none; }
+        #permission-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #111; padding: 12px 0; font-size: 11px; border-top: 1px solid #333; display: flex; justify-content: center; gap: 15px; }
+        .status-dot { width: 8px; height: 8px; display: inline-block; border-radius: 50%; margin-right: 5px; }
+        .dot-green { background: #28a745; box-shadow: 0 0 5px #28a745; }
+        .dot-red { background: #dc3545; box-shadow: 0 0 5px #dc3545; }
     </style>
 </head>
 <body>
@@ -48,7 +36,10 @@
 
         <div id="user-info">
             <img id="user-img" src="" alt="">
-            <span id="user-name">👤 กำลังเชื่อมต่อ LINE...</span>
+            <div style="text-align: left;">
+                <div id="user-name">👤 กำลังเชื่อมต่อ LINE...</div>
+                <div id="user-email" style="font-size: 10px; color: #888;">Email: Loading...</div>
+            </div>
         </div>
 
         <div id="loc-info" class="loc-status loading-loc" onclick="checkLocation()">
@@ -70,6 +61,7 @@
         <span>GPS: <span id="gps-status" class="status-dot dot-red"></span><span id="gps-text">OFF</span></span>
         <span>Scope P: <span id="scope-p" class="status-dot dot-red"></span></span>
         <span>Scope O: <span id="scope-o" class="status-dot dot-red"></span></span>
+        <span>Scope E: <span id="scope-e" class="status-dot dot-red"></span></span>
     </div>
 
     <script>
@@ -85,12 +77,11 @@
         let currentShop = null;
         let currentDist = 0;
 
-        // อัปเดตเวลาและวันที่
+        // อัปเดตเวลา/วันที่
         setInterval(() => {
             const now = new Date();
             document.getElementById('live-clock').innerText = now.toLocaleTimeString('th-TH', { hour12: false });
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            document.getElementById('live-date').innerText = now.toLocaleDateString('th-TH', options);
+            document.getElementById('live-date').innerText = now.toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         }, 1000);
 
         async function initLIFF() {
@@ -99,23 +90,24 @@
                 if (!liff.isLoggedIn()) { liff.login(); return; }
                 
                 const profile = await liff.getProfile();
+                const idToken = liff.getDecodedIDToken();
+                
                 document.getElementById('user-name').innerText = profile.displayName;
                 document.getElementById('user-img').src = profile.pictureUrl;
+                document.getElementById('user-email').innerText = "Email: " + (idToken.email || "ไม่พบอีเมล");
 
-                // ตรวจสอบ Scope และปรับสีไฟสถานะ
-                const pState = liff.getPermissionState('profile');
-                const oState = liff.getPermissionState('openid');
-                document.getElementById('scope-p').className = (pState === 'granted' || profile.displayName) ? "status-dot dot-green" : "status-dot dot-red";
-                document.getElementById('scope-o').className = (oState === 'granted' || profile.userId) ? "status-dot dot-green" : "status-dot dot-red";
+                // ตรวจสอบสถานะ Scope
+                document.getElementById('scope-p').className = "status-dot dot-green";
+                document.getElementById('scope-o').className = "status-dot dot-green";
+                if(idToken.email) document.getElementById('scope-e').className = "status-dot dot-green";
 
-                // เรียกเช็คพิกัดครั้งแรกอัตโนมัติ
                 checkLocation();
             } catch (e) { console.error(e); }
         }
 
         function checkLocation() {
             const info = document.getElementById('loc-info');
-            info.innerText = "⏳ กำลังค้นหาสัญญาณดาวเทียม...";
+            info.innerText = "⏳ กำลังค้นหาสัญญาณ GPS...";
             
             navigator.geolocation.getCurrentPosition(pos => {
                 userPos = pos.coords;
@@ -143,16 +135,16 @@
                     info.className = "loc-status out-range";
                 }
             }, err => {
+                alert("กรุณาเปิด GPS และอนุญาตสิทธิ์");
                 info.innerText = "📍 GPS ปิดอยู่ (คลิกเพื่อเปิด)";
-                alert("โปรดอนุญาตการเข้าถึงตำแหน่งที่ตั้ง");
-            }, { enableHighAccuracy: true, timeout: 10000 });
+            }, { enableHighAccuracy: true });
         }
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
             const R = 6371000;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const a = Math.sin(dLat / 2)**2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2)**2;
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         }
 
@@ -172,9 +164,12 @@
             btn.innerText = "⏳ กำลังบันทึกข้อมูล...";
 
             const profile = await liff.getProfile();
+            const idToken = liff.getDecodedIDToken();
+            
             const payload = {
                 lineId: profile.userId,
                 displayName: profile.displayName,
+                email: idToken.email || "N/A",
                 location: `${userPos.latitude},${userPos.longitude}`,
                 shopName: currentShop || "Unknown",
                 distance: currentDist,
