@@ -146,10 +146,15 @@
 
         document.getElementById('camera').onchange = function(e) {
             const reader = new FileReader();
-            reader.onload = function(ev) {
-                document.getElementById('preview').src = ev.target.result;
-                document.getElementById('preview').style.display = "block";
-                document.getElementById('save-btn').style.display = "block";
+            reader.onload = async function(ev) {
+        // --- จุดที่แก้ไข: เรียกใช้ resizeImage ก่อนแสดง Preview ---
+                const originalBase64 = ev.target.result;
+                const resizedBase64 = await resizeImage(originalBase64);
+                
+                const preview = document.getElementById('preview');
+        preview.src = resizedBase64; // ใช้รูปที่ย่อแล้ว
+        preview.style.display = "block";
+        document.getElementById('save-btn').style.display = "block";
             };
             reader.readAsDataURL(e.target.files[0]);
         };
@@ -189,6 +194,9 @@ function resizeImage(base64Str) {
 
             const profile = await liff.getProfile();
             const idToken = liff.getDecodedIDToken();
+
+            // ดึงค่า src จาก preview ซึ่งเป็นรูปที่ผ่าน resizeImage มาแล้ว
+            const finalImage = document.getElementById('preview').src;
             
             const payload = {
                 lineId: profile.userId,
@@ -197,7 +205,7 @@ function resizeImage(base64Str) {
                 location: `${userPos.latitude},${userPos.longitude}`,
                 shopName: currentShop || "Unknown",
                 distance: currentDist,
-                imageUrl: document.getElementById('preview').src
+                imageUrl: finalImage
             };
 
             fetch(WEB_APP_URL, {
@@ -207,6 +215,10 @@ function resizeImage(base64Str) {
             }).then(() => {
                 alert("✅ บันทึกข้อมูลเรียบร้อย!");
                 liff.closeWindow();
+            }).catch(err => {
+        alert("เกิดข้อผิดพลาดในการบันทึก");
+        btn.disabled = false;
+        btn.innerText = "ยืนยันการบันทึกข้อมูล";
             });
         }
 
@@ -214,4 +226,5 @@ function resizeImage(base64Str) {
     </script>
 </body>
 </html>
+
 
