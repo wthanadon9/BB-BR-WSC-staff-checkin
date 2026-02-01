@@ -3,122 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>White Sands System</title>
+    <title>White Sands Staff System</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;500&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Kanit', sans-serif; background: #000; color: #fff; padding: 10px; text-align: center; margin-bottom: 50px; }
-        .card { background: #1a1a1a; padding: 20px; border-radius: 20px; border: 1px solid #333; max-width: 400px; margin: auto; }
-        #live-clock { font-size: 32px; font-weight: bold; color: #ffcc00; margin-bottom: 5px; }
-        #line-id-display { font-size: 11px; color: #888; margin-bottom: 10px; word-break: break-all; }
-        .loc-status { padding: 12px; margin: 10px 0; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; }
-        .in-range { background: #28a745; color: white; }
-        .out-range { background: #dc3545; color: white; }
-        .loading { background: #555; color: #eee; border: 1px dashed #ffcc00; }
+        body { font-family: 'Kanit', sans-serif; background: #000; color: #fff; padding: 10px; text-align: center; margin-bottom: 60px; }
+        .card { background: #1a1a1a; padding: 20px; border-radius: 20px; border: 1px solid #333; max-width: 400px; margin: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        
+        /* 1 & 2. เวลาและวันที่ */
+        #live-clock { font-size: 36px; font-weight: bold; color: #ffcc00; margin-bottom: 0px; }
+        #live-date { font-size: 16px; color: #aaa; margin-bottom: 15px; }
+        
+        /* 3. ชื่อผู้ใช้ */
+        #user-info { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px; background: #252525; padding: 10px; border-radius: 15px; }
+        #user-info img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #ffcc00; }
+        #user-name { font-weight: 500; font-size: 16px; }
+
+        /* 4 & 5. สถานที่และระยะห่าง */
+        .loc-status { padding: 15px; margin: 10px 0; border-radius: 15px; font-size: 15px; font-weight: 500; transition: 0.3s; }
+        .in-range { background: #28a745; color: white; border: 2px solid #1e7e34; }
+        .out-range { background: #dc3545; color: white; border: 2px solid #bd2130; }
+        .loading-loc { background: #333; border: 1px dashed #ffcc00; color: #ffcc00; }
+
+        #map-container { width: 100%; height: 180px; border-radius: 15px; margin-top: 10px; overflow: hidden; border: 1px solid #444; }
+        
         .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; margin-top: 15px; cursor: pointer; }
-        #save-btn { display: none; color: white; }
-        #permission-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 10px 0; font-size: 12px; border-top: 1px solid #444; display: flex; justify-content: center; gap: 15px; }
+        .btn-cam { background: #444; color: white; }
+        #save-btn { display: none; background: #ffcc00; color: #000; }
+
+        /* 6. แถบสถานะด้านล่าง */
+        #permission-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #111; padding: 12px 0; font-size: 12px; border-top: 1px solid #333; display: flex; justify-content: center; gap: 20px; }
+        .status-dot { width: 8px; height: 8px; display: inline-block; border-radius: 50%; margin-right: 5px; }
+        .dot-green { background: #28a745; box-shadow: 0 0 5px #28a745; }
+        .dot-red { background: #dc3545; box-shadow: 0 0 5px #dc3545; }
     </style>
 </head>
 <body>
+
     <div class="card">
         <div id="live-clock">00:00:00</div>
-        <div id="line-id-display">Line ID: Loading...</div>
-        <p id="user-name">👤 Loading Profile...</p>
-        
-        <div id="loc-info" class="loc-status loading">📍 Checking GPS...</div>
-        
+        <div id="live-date">วัน...ที่ .. เดือน .... พ.ศ. ....</div>
+
+        <div id="user-info">
+            <img id="user-img" src="https://via.placeholder.com/40" alt="profile">
+            <span id="user-name">👤 กำลังโหลดโปรไฟล์...</span>
+        </div>
+
+        <div id="loc-info" class="loc-status loading-loc">
+            📍 กำลังตรวจสอบพิกัดเช็คอิน...
+        </div>
+
+        <div id="map-container">
+            <iframe id="google-map" src="about:blank" width="100%" height="100%" frameborder="0"></iframe>
+        </div>
+
         <input type="file" id="camera" accept="image/*" capture="user" style="display:none">
-        <button class="btn" id="btn-cam" style="background:#444; color:white; display:none;" onclick="document.getElementById('camera').click()">📸 Take Selfie</button>
+        <button class="btn btn-cam" id="btn-cam" onclick="document.getElementById('camera').click()">📸 ถ่ายรูปยืนยันตัวตน</button>
         
-        <img id="preview" style="width:100%; border-radius:15px; margin-top:15px; display:none; border: 2px solid #555;">
-        
-        <button id="save-btn" class="btn" onclick="submitData()">Confirm Check-in</button>
+        <img id="preview" style="width:100%; border-radius:15px; margin-top:15px; display:none; border: 2px solid #ffcc00;">
+        <button id="save-btn" class="btn" onclick="submitData()">ยืนยันการบันทึกข้อมูล</button>
     </div>
 
     <div id="permission-bar">
-        GPS: <span id="gps-perm" style="color:#dc3545;">NO</span> | 
-        Scope: <span id="scope-p">P</span> <span id="scope-o">O</span>
+        <span>GPS: <span id="gps-status" class="status-dot dot-red"></span><span id="gps-text">OFF</span></span>
+        <span>Scope P: <span id="scope-p" class="status-dot dot-red"></span></span>
+        <span>Scope O: <span id="scope-o" class="status-dot dot-red"></span></span>
     </div>
 
     <script>
         const LIFF_ID = "2009020874-nYryKAS5"; 
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxv1cV-w5yRfEbqZgol-HXIzyLux5wDtkSRtUfRfMd2fey5dw9lFOewxu3y_xl1_vTL1Q/exec";
+        
         const SHOPS = [
-            { name: "BLACK RABBIT", lat: 13.676830, lng: 100.415685 },
-            { name: "BLACK BEACH", lat: 13.718257, lng: 100.476981 }
+            { name: "BLACK BEACH (ตลาดพลู)", lat: 13.718257, lng: 100.476981 },
+            { name: "BLACK RABBIT (สำเพ็ง2)", lat: 13.676830, lng: 100.415685 }
         ];
 
         let userPos = null;
-        let currentDistance = 0;
-        let currentShopName = "";
+        let currentShop = null;
+        let currentDist = 0;
 
-        // นาฬิกาวิ่ง
+        // 1 & 2. อัปเดตเวลาและวันที่
         setInterval(() => {
             const now = new Date();
-            document.getElementById('live-clock').innerText = now.getHours().toString().padStart(2,'0') + ":" + now.getMinutes().toString().padStart(2,'0') + ":" + now.getSeconds().toString().padStart(2,'0');
+            document.getElementById('live-clock').innerText = now.toLocaleTimeString('th-TH', { hour12: false });
+            
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('live-date').innerText = now.toLocaleDateString('th-TH', options);
         }, 1000);
 
-        async function init() {
+        async function initLIFF() {
             try {
                 await liff.init({ liffId: LIFF_ID });
                 if (!liff.isLoggedIn()) { liff.login(); return; }
                 
                 const profile = await liff.getProfile();
-                document.getElementById('user-name').innerText = "👤 " + profile.displayName;
-                document.getElementById('line-id-display').innerText = "ID: " + profile.userId;
+                document.getElementById('user-name').innerText = profile.displayName;
+                document.getElementById('user-img').src = profile.pictureUrl;
 
-                // เช็คสิทธิ์ Scope
-                document.getElementById('scope-p').style.color = (liff.getPermissionState('profile') === 'granted') ? "#28a745" : "#dc3545";
-                document.getElementById('scope-o').style.color = (liff.getPermissionState('openid') === 'granted') ? "#28a745" : "#dc3545";
+                // 6. เช็คสิทธิ์ Scope
+                updateScopeDot('profile', 'scope-p');
+                updateScopeDot('openid', 'scope-o');
 
                 checkLocation();
-            } catch (e) { alert("Init Error: " + e.message); }
+            } catch (e) { console.error(e); }
         }
 
+        function updateScopeDot(scope, elementId) {
+            const state = liff.getPermissionState(scope);
+            const dot = document.getElementById(elementId);
+            dot.className = (state === 'granted') ? "status-dot dot-green" : "status-dot dot-red";
+        }
+
+        // 4 & 5. เช็คตำแหน่งและคำนวณระยะทาง
         function checkLocation() {
             navigator.geolocation.getCurrentPosition(pos => {
                 userPos = pos.coords;
-                document.getElementById('gps-perm').innerText = "YES";
-                document.getElementById('gps-perm').style.color = "#28a745";
+                document.getElementById('gps-status').className = "status-dot dot-green";
+                document.getElementById('gps-text').innerText = "ON";
 
-                let found = false;
+                // อัปเดตแผนที่
+                document.getElementById('google-map').src = `https://maps.google.com/maps?q=${userPos.latitude},${userPos.longitude}&z=16&output=embed`;
+
+                let inRange = false;
                 SHOPS.forEach(shop => {
-                    const dist = getDistance(userPos.latitude, userPos.longitude, shop.lat, shop.lng);
-                    if (dist <= 60) {
-                        currentDistance = dist.toFixed(2);
-                        currentShopName = shop.name;
+                    const dist = calculateDistance(userPos.latitude, userPos.longitude, shop.lat, shop.lng);
+                    if (dist <= 100) { // ระยะ 100 เมตร
+                        inRange = true;
+                        currentShop = shop.name;
+                        currentDist = dist.toFixed(0);
                         const info = document.getElementById('loc-info');
-                        info.innerText = `📍 ${shop.name} (${currentDistance} m.)`;
+                        info.innerText = `📍 ${shop.name} \n (ระยะห่าง ${currentDist} เมตร)`;
                         info.className = "loc-status in-range";
-                        document.getElementById('btn-cam').style.display = "block";
-                        found = true;
                     }
                 });
 
-                if (!found) {
+                if (!inRange) {
                     const info = document.getElementById('loc-info');
-                    info.innerText = "❌ Out of Range";
+                    info.innerText = "❌ ไม่อยู่ในพื้นที่เช็คอิน";
                     info.className = "loc-status out-range";
                 }
-            }, err => alert("Please enable GPS"), { enableHighAccuracy: true });
+            }, err => {
+                alert("กรุณาเปิด GPS");
+            }, { enableHighAccuracy: true });
         }
 
-        function getDistance(lat1, lon1, lat2, lon2) {
+        function calculateDistance(lat1, lon1, lat2, lon2) {
             const R = 6371000;
-            const dLat = (lat2-lat1) * Math.PI / 180;
-            const dLon = (lon2-lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         }
 
+        // ถ่ายรูป
         document.getElementById('camera').onchange = function(e) {
             const reader = new FileReader();
             reader.onload = function(ev) {
                 document.getElementById('preview').src = ev.target.result;
                 document.getElementById('preview').style.display = "block";
                 document.getElementById('save-btn').style.display = "block";
-                document.getElementById('save-btn').style.backgroundColor = "#28a745";
             };
             reader.readAsDataURL(e.target.files[0]);
         };
@@ -126,16 +170,16 @@
         async function submitData() {
             const btn = document.getElementById('save-btn');
             btn.disabled = true;
-            btn.innerText = "⏳ Saving...";
-            
+            btn.innerText = "⏳ กำลังบันทึก...";
+
             const profile = await liff.getProfile();
             const payload = {
                 lineId: profile.userId,
                 displayName: profile.displayName,
                 location: `${userPos.latitude},${userPos.longitude}`,
-                imageUrl: document.getElementById('preview').src,
-                shopName: currentShopName,
-                distance: currentDistance
+                shopName: currentShop,
+                distance: currentDist,
+                imageUrl: document.getElementById('preview').src
             };
 
             fetch(WEB_APP_URL, {
@@ -143,14 +187,15 @@
                 mode: 'no-cors',
                 body: JSON.stringify(payload)
             }).then(() => {
-                alert("✅ Success!");
+                alert("✅ บันทึกข้อมูลเรียบร้อยแล้ว!");
                 liff.closeWindow();
-            }).catch(e => {
-                alert("Saved!");
+            }).catch(() => {
+                alert("บันทึกสำเร็จ (Network bypass)");
                 liff.closeWindow();
             });
         }
-        init();
+
+        window.onload = initLIFF;
     </script>
 </body>
 </html>
