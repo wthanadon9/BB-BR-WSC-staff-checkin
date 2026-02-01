@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>White Sands Check-in</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #000; color: #fff; text-align: center; padding: 20px; }
+        .card { background: #1a1a1a; padding: 20px; border-radius: 20px; border: 1px solid #333; }
+        .btn { width: 100%; padding: 15px; border-radius: 10px; border: none; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        #status-btn { background: #28a745; color: white; display: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>White Sands System</h2>
+        <p id="user-name">👤 Loading Profile...</p>
+        <p id="loc-info">📍 Checking Location...</p>
+        
+        <input type="file" id="camera" accept="image/*" capture="user" style="display:none">
+        <button class="btn" style="background:#444; color:white;" onclick="document.getElementById('camera').click()">📸 Take Selfie</button>
+        
+        <img id="preview" style="width:100%; display:none; margin-top:10px; border-radius:10px;">
+        <button id="status-btn" class="btn" onclick="submitData()">Confirm Check-in</button>
+    </div>
+
+    <script>
+        const LIFF_ID = "2009020874-nYryKAS5"; 
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxv1cV-w5yRfEbqZgol-HXIzyLux5wDtkSRtUfRfMd2fey5dw9lFOewxu3y_xl1_vTL1Q/exec";
+
+        let userPos = null;
+
+        async function init() {
+            await liff.init({ liffId: LIFF_ID });
+            if (!liff.isLoggedIn()) { liff.login(); return; }
+            const profile = await liff.getProfile();
+            document.getElementById('user-name').innerText = "👤 " + profile.displayName;
+            
+            navigator.geolocation.getCurrentPosition(pos => {
+                userPos = pos.coords;
+                document.getElementById('loc-info').innerText = "📍 Location Ready";
+            });
+        }
+
+        document.getElementById('camera').onchange = function(e) {
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                document.getElementById('preview').src = ev.target.result;
+                document.getElementById('preview').style.display = "block";
+                document.getElementById('status-btn').style.display = "block";
+            };
+            reader.readAsDataURL(e.target.files[0]);
+        };
+
+        async function submitData() {
+            const profile = await liff.getProfile();
+            const payload = {
+                lineId: profile.userId,
+                displayName: profile.displayName,
+                location: userPos.latitude + "," + userPos.longitude,
+                imageUrl: document.getElementById('preview').src
+            };
+
+            fetch(WEB_APP_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify(payload)
+            }).then(() => {
+                alert("✅ Success!");
+                liff.closeWindow();
+            });
+        }
+        init();
+    </script>
+</body>
+</html>
