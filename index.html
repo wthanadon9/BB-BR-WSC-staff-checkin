@@ -3,44 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>White Sands Check-in</title>
+    <title>White Sands System</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;500&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; background: #000; color: #fff; text-align: center; padding: 20px; }
-        .card { background: #1a1a1a; padding: 20px; border-radius: 20px; border: 1px solid #333; }
-        .btn { width: 100%; padding: 15px; border-radius: 10px; border: none; font-weight: bold; margin-top: 10px; cursor: pointer; }
-        #status-btn { background: #28a745; color: white; display: none; }
+        body { font-family: 'Kanit', sans-serif; background: #000; color: #fff; padding: 10px; text-align: center; margin-bottom: 50px; }
+        .card { background: #1a1a1a; padding: 20px; border-radius: 20px; border: 1px solid #333; max-width: 400px; margin: auto; }
+        #live-clock { font-size: 32px; font-weight: bold; color: #ffcc00; margin-bottom: 5px; }
+        #line-id-display { font-size: 11px; color: #888; margin-bottom: 10px; word-break: break-all; }
+        .loc-status { padding: 12px; margin: 10px 0; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; }
+        .in-range { background: #28a745; color: white; }
+        .out-range { background: #dc3545; color: white; }
+        .loading { background: #555; color: #eee; border: 1px dashed #ffcc00; }
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; margin-top: 15px; cursor: pointer; }
+        #save-btn { display: none; color: white; }
+        #permission-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 10px 0; font-size: 12px; border-top: 1px solid #444; display: flex; justify-content: center; gap: 15px; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2>White Sands System</h2>
+        <div id="live-clock">00:00:00</div>
+        <div id="line-id-display">Line ID: Loading...</div>
         <p id="user-name">👤 Loading Profile...</p>
-        <p id="loc-info">📍 Checking Location...</p>
+        
+        <div id="loc-info" class="loc-status loading">📍 Checking GPS...</div>
         
         <input type="file" id="camera" accept="image/*" capture="user" style="display:none">
-        <button class="btn" style="background:#444; color:white;" onclick="document.getElementById('camera').click()">📸 Take Selfie</button>
+        <button class="btn" id="btn-cam" style="background:#444; color:white; display:none;" onclick="document.getElementById('camera').click()">📸 Take Selfie</button>
         
-        <img id="preview" style="width:100%; display:none; margin-top:10px; border-radius:10px;">
-        <button id="status-btn" class="btn" onclick="submitData()">Confirm Check-in</button>
+        <img id="preview" style="width:100%; border-radius:15px; margin-top:15px; display:none; border: 2px solid #555;">
+        
+        <button id="save-btn" class="btn" onclick="submitData()">Confirm Check-in</button>
+    </div>
+
+    <div id="permission-bar">
+        GPS: <span id="gps-perm" style="color:#dc3545;">NO</span> | 
+        Scope: <span id="scope-p">P</span> <span id="scope-o">O</span>
     </div>
 
     <script>
         const LIFF_ID = "2009020874-nYryKAS5"; 
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxv1cV-w5yRfEbqZgol-HXIzyLux5wDtkSRtUfRfMd2fey5dw9lFOewxu3y_xl1_vTL1Q/exec";
+        const SHOPS = [
+            { name: "BLACK RABBIT", lat: 13.676830, lng: 100.415685 },
+            { name: "BLACK BEACH", lat: 13.718257, lng: 100.476981 }
+        ];
 
         let userPos = null;
+        let currentDistance = 0;
+        let currentShopName = "";
+
+        // นาฬิกาวิ่ง
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('live-clock').innerText = now.getHours().toString().padStart(2,'0') + ":" + now.getMinutes().toString().padStart(2,'0') + ":" + now.getSeconds().toString().padStart(2,'0');
+        }, 1000);
 
         async function init() {
-            await liff.init({ liffId: LIFF_ID });
-            if (!liff.isLoggedIn()) { liff.login(); return; }
-            const profile = await liff.getProfile();
-            document.getElementById('user-name').innerText = "👤 " + profile.displayName;
-            
+            try {
+                await liff.init({ liffId: LIFF_ID });
+                if (!liff.isLoggedIn()) { liff.login(); return; }
+                
+                const profile = await liff.getProfile();
+                document.getElementById('user-name').innerText = "👤 " + profile.displayName;
+                document.getElementById('line-id-display').innerText = "ID: " + profile.userId;
+
+                // เช็คสิทธิ์ Scope
+                document.getElementById('scope-p').style.color = (liff.getPermissionState('profile') === 'granted') ? "#28a745" : "#dc3545";
+                document.getElementById('scope-o').style.color = (liff.getPermissionState('openid') === 'granted') ? "#28a745" : "#dc3545";
+
+                checkLocation();
+            } catch (e) { alert("Init Error: " + e.message); }
+        }
+
+        function checkLocation() {
             navigator.geolocation.getCurrentPosition(pos => {
                 userPos = pos.coords;
-                document.getElementById('loc-info').innerText = "📍 Location Ready";
-            });
+                document.getElementById('gps-perm').innerText = "YES";
+                document.getElementById('gps-perm').style.color = "#28a745";
+
+                let found = false;
+                SHOPS.forEach(shop => {
+                    const dist = getDistance(userPos.latitude, userPos.longitude, shop.lat, shop.lng);
+                    if (dist <= 60) {
+                        currentDistance = dist.toFixed(2);
+                        currentShopName = shop.name;
+                        const info = document.getElementById('loc-info');
+                        info.innerText = `📍 ${shop.name} (${currentDistance} m.)`;
+                        info.className = "loc-status in-range";
+                        document.getElementById('btn-cam').style.display = "block";
+                        found = true;
+                    }
+                });
+
+                if (!found) {
+                    const info = document.getElementById('loc-info');
+                    info.innerText = "❌ Out of Range";
+                    info.className = "loc-status out-range";
+                }
+            }, err => alert("Please enable GPS"), { enableHighAccuracy: true });
+        }
+
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
+            const dLat = (lat2-lat1) * Math.PI / 180;
+            const dLon = (lon2-lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
 
         document.getElementById('camera').onchange = function(e) {
@@ -48,18 +117,25 @@
             reader.onload = function(ev) {
                 document.getElementById('preview').src = ev.target.result;
                 document.getElementById('preview').style.display = "block";
-                document.getElementById('status-btn').style.display = "block";
+                document.getElementById('save-btn').style.display = "block";
+                document.getElementById('save-btn').style.backgroundColor = "#28a745";
             };
             reader.readAsDataURL(e.target.files[0]);
         };
 
         async function submitData() {
+            const btn = document.getElementById('save-btn');
+            btn.disabled = true;
+            btn.innerText = "⏳ Saving...";
+            
             const profile = await liff.getProfile();
             const payload = {
                 lineId: profile.userId,
                 displayName: profile.displayName,
-                location: userPos.latitude + "," + userPos.longitude,
-                imageUrl: document.getElementById('preview').src
+                location: `${userPos.latitude},${userPos.longitude}`,
+                imageUrl: document.getElementById('preview').src,
+                shopName: currentShopName,
+                distance: currentDistance
             };
 
             fetch(WEB_APP_URL, {
@@ -68,6 +144,9 @@
                 body: JSON.stringify(payload)
             }).then(() => {
                 alert("✅ Success!");
+                liff.closeWindow();
+            }).catch(e => {
+                alert("Saved!");
                 liff.closeWindow();
             });
         }
