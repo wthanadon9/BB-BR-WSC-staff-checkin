@@ -154,6 +154,34 @@
             reader.readAsDataURL(e.target.files[0]);
         };
 
+        // ฟังก์ชันสำหรับย่อขนาดรูปภาพก่อนส่ง
+function resizeImage(base64Str) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      // ปรับความกว้างให้ไม่เกิน 600px และรักษาอัตราส่วนภาพ (Aspect Ratio)
+      if (width > 600) {
+        height = (600 / width) * height;
+        width = 600;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // บีบอัดคุณภาพไฟล์ (Quality 0.7 - 0.8 มักจะทำให้ไฟล์ไม่เกิน 200kb)
+      const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+      resolve(compressedBase64);
+    };
+  });
+}
+
         async function submitData() {
             const btn = document.getElementById('save-btn');
             btn.disabled = true;
@@ -186,3 +214,4 @@
     </script>
 </body>
 </html>
+
