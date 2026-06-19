@@ -5,6 +5,52 @@
 
 ---
 
+## ⭐ ภาคพิเศษ: ถ้าจะ "ทำโปรแกรมแบบ Buffer / Hootsuite ขึ้นมาเอง"
+
+> โจทย์ที่ชัดเจนขึ้น: เราอยากได้เครื่องมือจัดการโซเชียลแบบ Buffer/Hootsuite (ตั้งเวลาโพสต์หลายแพลตฟอร์ม + รวม inbox + ดู analytics) เป็น **ของเราเอง** — หัวข้อนี้ตอบเรื่องนี้โดยตรง
+
+### ความจริงที่ต้องรู้ก่อน: ความยากไม่ได้อยู่ที่ "หน้าจอ" แต่อยู่ที่ "API ของแต่ละแพลตฟอร์ม"
+
+การเขียนหน้าเว็บปฏิทินตั้งเวลาโพสต์ = ง่าย (เป็นงาน dev ปกติ)
+แต่การ "ต่อท่อ" ไปยัง Facebook / IG / TikTok / X / LINE = **ยากและบานปลายที่สุด** เพราะ:
+
+| แพลตฟอร์ม | ความยากในการต่อ API (2026) |
+|---|---|
+| **Meta (FB/IG)** | ต้องผ่าน **App Review** + **Business Verification** เขียนคำอธิบาย use-case ทุก permission + อัดวิดีโอสาธิต รออนุมัติ **1–4 สัปดาห์ต่อรอบ** อาจโดนปฏิเสธ |
+| **TikTok** | Content Posting API ต้องส่งรีวิว (audit) **1–2 สัปดาห์** ผลไม่แน่นอน จำกัด 25 คลิป/วัน/บัญชี |
+| **X (Twitter)** | ⚠️ ก.พ. 2026 เปลี่ยนเป็น **จ่ายตามการใช้** ไม่มี free tier — โพสต์ละ ~$0.015 (มีลิงก์ $0.20) อ่านโพสต์ละ $0.005 / Enterprise เริ่ม $42,000/เดือน |
+| **LINE OA** | Messaging API ฟรี/ถูก ต่อง่ายสุด (เราถนัดอยู่แล้ว) |
+
+**ภาระที่ไม่มีวันจบ:** แต่ละเจ้ามี OAuth, rate limit, วิธีอัปโหลดสื่อ และ "การเปลี่ยนกฎ" ของตัวเอง — API พังหรือเปลี่ยนเงื่อนไขบ่อย ต้องมีคนคอยตามแก้ตลอด นี่คือเหตุผลที่ Buffer/Hootsuite ถึงเก็บเงินรายเดือน (เขารับภาระตรงนี้แทนเรา)
+
+### 👉 ทางลัดที่ฉลาดที่สุด: ใช้ Open-Source "ตัว Buffer/Hootsuite สำเร็จรูป" มา self-host เอง
+
+แทนที่จะเขียนใหม่จาก 0 — มีโปรแกรม **โอเพนซอร์ส** ที่ "เป็น Buffer/Hootsuite" อยู่แล้ว เอามารันบนเซิร์ฟเวอร์เราเอง ได้หน้าตา/ฟีเจอร์ครบ + ข้อมูลเป็นของเรา 100%:
+
+| ตัวเลือก | รูปแบบ | ค่าใช้จ่าย | จุดเด่น |
+|---|---|---|---|
+| **Postiz** ⭐ | Open-source, self-host | **ฟรี** (หรือ cloud $29/เดือน) | รองรับ 30+ แพลตฟอร์ม เป็นตัวที่โอเพนซอร์สเต็มและรองรับมากสุด |
+| **Mixpost** | Open-source, self-host | **จ่ายครั้งเดียว** (ไม่มีรายเดือน) | ติดตั้งผ่าน Docker คุมข้อมูลเอง 100% |
+| เขียนเองจาก 0 | Custom | สูงมาก (ดูข้อ 5) | ไม่แนะนำ — เสียเวลาไปกับสิ่งที่มีคนทำให้แล้ว |
+
+> **สรุปทางลัด:** อยากได้ "Buffer ของตัวเอง" → ลง **Postiz** หรือ **Mixpost** บน VPS ราคาหลักร้อยบาท/เดือน ได้ของที่เหมือนกันแทบทุกอย่าง โดยไม่ต้องเขียนเอง
+
+⚠️ **แต่จุดที่หนีไม่พ้นเลยไม่ว่าจะวิธีไหน:** เราต้องไปสมัคร Developer App ของแต่ละแพลตฟอร์ม + ผ่านการรีวิว/ยืนยันธุรกิจเอง (Postiz/Mixpost ช่วยเรื่องโค้ด แต่ไม่ช่วยเรื่องการขออนุมัติจาก Meta/TikTok) — งานนี้กินเวลาหลายสัปดาห์
+
+### ถ้าอยากฝัง Social เข้าไปใน ERP/ระบบของเราเอง → ใช้ "Unified API"
+
+ถ้าเป้าหมายคืออยากให้ปุ่มโพสต์โซเชียลอยู่ในระบบหลังบ้านของเราเอง ไม่อยากต่อ API ทีละเจ้า → จ่ายให้ตัวกลางที่ต่อให้หมดแล้ว:
+- **Ayrshare** — เริ่ม $149/เดือน ต่อ FB/IG/TikTok/X/LINE ให้ครบในที่เดียว ยิง API เดียวจบ (เหมาะถ้าจะ build เข้า ERP)
+
+### สรุปคำแนะนำเฉพาะเรื่องนี้
+1. **อย่าเขียน Buffer ใหม่จาก 0** — ความยากอยู่ที่ API/การอนุมัติ ไม่ใช่หน้าจอ และต้องดูแลตลอดไป
+2. **อยากได้ "Buffer ของตัวเอง" ราคาถูก คุมข้อมูลเอง** → self-host **Postiz** (ฟรี) หรือ **Mixpost** (จ่ายครั้งเดียว)
+3. **อยากฝังเข้าระบบหลังบ้านเราเอง** → ใช้ **Ayrshare** เป็นตัวกลาง (~$149/เดือน) ประหยัดเวลา dev มหาศาล
+4. **ถ้าแค่ใช้งานพอ ไม่ซีเรียสเรื่องเป็นเจ้าของ** → **Buffer/Metricool** สมัครใช้เลยถูกและจบ
+5. ไม่ว่าทางไหน ตั้งงบเวลา **หลายสัปดาห์** สำหรับการขออนุมัติ App จาก Meta/TikTok
+
+---
+
 ## 1. สรุปสำหรับผู้บริหาร (TL;DR)
 
 | คำถาม | คำตอบสั้น |
@@ -176,3 +222,10 @@
 - [How Much Does ERP Cost in 2026 — Top10ERP](https://www.top10erp.org/blog/erp-price)
 - [Loyverse POS Pricing 2026 — Capterra](https://www.capterra.com/p/150632/Loyverse-POS/)
 - [Best POS Systems for Small Business in Thailand — ConnectPOS](https://www.connectpos.com/best-pos-system-for-small-business/)
+- [Social Media APIs 2026: Real Costs, Rate Limits & What Broke — Socialcrawl](https://www.socialcrawl.dev/blog/ultimate-guide-social-media-apis-2026)
+- [8 Best Social Media APIs for Building an App in 2026 — GetStream](https://getstream.io/blog/best-social-media-apis/)
+- [TikTok Posting API: limits, OAuth, setup 2026 — Zernio](https://zernio.com/blog/tiktok-posting-api)
+- [X (Twitter) API Pricing 2026 — Blotato](https://www.blotato.com/blog/twitter-api-pricing)
+- [X API Pricing 2026 (pay-per-use) — Postproxy](https://postproxy.dev/blog/x-api-pricing-2026/)
+- [Postiz vs Ayrshare vs Mixpost — Postiz](https://postiz.com/compare/ayrshare/mixpost)
+- [Best Social Media APIs for Developers 2026 — Buffer](https://buffer.com/resources/best-social-media-apis/)
